@@ -10,20 +10,16 @@
 typedef enum {
     TK_RESERVED, // 記号
     TK_NUM,      // 整数トークン
-    TK_EOF,      //　入力の終わりを表すトークン
+    TK_EOF,      // 入力の終わりを表すトークン
 } TokenKind;
 
 typedef struct Token Token;
 
 struct Token {
-    // トークンの型
-    TokenKind kind;
-    // 次の入力トークン
-    Token *next;
-    // kindがTK_NUMの場合、その数値
-    int val;
-    // トークン文字列　
-    char *str;
+    TokenKind kind; // トークンの型
+    Token *next;    // 次の入力トークン
+    int val;        // kindがTK_NUMの場合、その数値
+    char *str;      // トークン文字列
 };
 
 // 現在注目してるトークン
@@ -34,6 +30,7 @@ Token *token;
 void error (char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
+    // 1.ストリーム 2.書式文字列 3.変換するパラメータのリスト（可変長引数リスト）
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     exit(1);
@@ -50,7 +47,7 @@ bool consume(char op) {
 
 // 次のトークンが期待している記号のときには、トークンを一つ読み進める。
 // それ以外の場合にはエラーを報告する。
-void expect(char op) {
+bool expect(char op) {
     if (token->kind != TK_RESERVED || token->str[0] != op)
         return false;
     token = token->next;
@@ -72,36 +69,70 @@ bool at_eof() {
     return token->kind == TK_EOF;
 }
 
-// 新しいトークンを作成して
+// 新しいトークンを作成してcurに繋げる
+Token *new_token(TokenKind kind, Token * cur, char *str) {
+    Token *tok = calloc(1, sizeof(Token));
+    tok->kind = kind;
+    tok->str = str;
+    cur->next = tok;
+    return tok;
+}
 
+// 入力文字列pをトークナイズしてそれを返す
+Token *tokenize(char *p) {
+    Token head;
+    head.next = NULL;
+    Token *cur = &head;
 
+    while(*p) {
+        // 標準空白類文字（' ','\t','\n','\v','\f','\r'）
+        if (isspace(*p)) {
+            p++;
+            continue;
+        }
+
+        if (*p == '+' || *p == '-') {
+            cur = new_token(TK_RESERVED, cur, p++);
+            continue;
+        }
+
+        if (isdigit(*p)) {
+            cur = new_token(TK_NUM, cur, p);
+            // 1:変換対象文字列 2:変換不可能な文字を格納するポインタ 3:基数
+            cur->val = strtol(p, &p, 10);
+            continue;
+        }
+
+        error("トークナイズできません");
+    }
+    new_token(TK_EOF, cur, p);
+    return head.next;
+}
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "引数の個数が正しくありません\n");
+        fprintf(stderr, "引数の個数が正しくありません");
         return 1;
     }
-    char *p = argv[1];
+
+    token = tokenize(argv[1]);
+
     printf(".intel_syntax noprefix\n");
     printf(".global main\n");
     printf("main:\n");
-    printf("  mov rax, %ld\n", strtol(p, &p, 10));
+
+    // 式の最初は数でなければならいので、それをチェックして
+    // 最初のmov命令を出力
+    printf("  mov rax, %d\n", expect_number());
     
-    while(*p) {
-	if (*p == '+') {
-		p++;
-		printf("  add rax, %ld\n", strtol(p, &p, 10));
-		continue;
-	}
+    while(!at_eof()) {
+        if (consume('+')) {
+            printf("  add rax, %d\n", expect_number());
+            continue;
+        }
 
-	if (*p == '-') {
-		p++;
-		printf("  sub rax, %ld\n", strtol(p, &p, 10));
-		continue;
-	}
-
-	fprintf(stderr, "予期しない文字です: '%c'\n", *p);
-	return 1;
+        expect('-');
+        printf("  sub rax, %d\n", expect_number());
     }
     printf("  ret\n");
     return 0;

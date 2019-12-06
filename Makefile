@@ -7,7 +7,7 @@ CFLAGS=-std=c11 -g -static
 # exec tmp
 test: 9cc
 	./test.sh
-clean:
-	rm -f 9cc *.0 *~ tmp*
+#clean:
+#	rm -f 9cc *.0 *~ tmp*
 
 .PHONY: test clean
