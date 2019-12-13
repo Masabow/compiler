@@ -24,7 +24,6 @@ struct Token {
 
 // 現在注目してるトークン
 Token *token;
-
 // エラーを報告するための関数
 // printfと同じ引数を取る
 void error (char *fmt, ...) {
@@ -75,7 +74,7 @@ bool expect(char op) {
 // それ以外の場合にはエラーを報告する。
 int expect_number() {
     if (token->kind != TK_NUM) {
-        error("数ではありません");
+        error_at(token->str, "数値ではありません");
     }
     int val = token->val;
     token = token->next;
@@ -119,8 +118,7 @@ Token *tokenize(char *p) {
             cur->val = strtol(p, &p, 10);
             continue;
         }
-
-        error("トークナイズできません");
+        error_at(cur->str, "トークナイズできません");
     }
     new_token(TK_EOF, cur, p);
     return head.next;
@@ -132,6 +130,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    user_input = argv[1];
     token = tokenize(argv[1]);
 
     printf(".intel_syntax noprefix\n");
