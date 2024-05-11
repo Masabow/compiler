@@ -2,5 +2,5 @@
 ## コンパイラをMakeするためのツール群
 ```bash
 sudo apt update
-udo apt install -y gcc make git binutils libc6-dev
+sudo apt install -y gcc make git binutils libc6-dev
 ```
